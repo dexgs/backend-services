@@ -36,7 +36,7 @@ local function test_address(certificate, address, r)
 		return false
 	end
 
-	if certificate ~= ssl:peer():export() then
+	if certificate and certificate ~= ssl:peer():export() then
 		r:write("Unmatching certificate! Is there perhaps another server?\n")
 		return false
 	end
@@ -56,11 +56,6 @@ function handle(r)
 	end
 
 	local certificate = r:subprocess_env_table()["SSL_CLIENT_CERT"]
-	if not certificate then
-		r:write("Missing certificate!")
-		r.status = 496
-		return apache2.OK
-	end
 
 	local requestbody = r:requestbody()
 	local root = xmlutils.get_root(requestbody)
@@ -166,6 +161,13 @@ function handle(r)
 		end
 
 		updated = true
+	elseif not certificate then
+		r:write("Missing client certificate! \z
+		If your certificate is provided by Let's Encrypt, see \z
+		https://github.com/mumble-voip/mumble/issues/7076 for details.\n")
+		r.status = 496
+		database:close()
+		return apache2.OK
 	end
 
 
